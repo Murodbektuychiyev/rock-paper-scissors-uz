@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Tosh • Qog'oz • Qaychi — O'yin</title>
+  <link rel="icon" type="image/png" href="./pics/favicon.png">
+  <style>
+    :root{
+      --card:#121824;--muted:#8aa0b2;--text:#e7eef4;--accent:#4da3ff;--win:#14c38e;--lose:#ff5d5d;--draw:#f0c419;
+      --shadow:0 10px 30px rgba(0,0,0,.35);
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0;display:flex;flex-direction:column;min-height:100vh;
+      background:#0b0f14;
+      color:var(--text);font:16px/1.4 system-ui,-apple-system,Segoe UI,Roboto,"Helvetica Neue",Arial,"Noto Sans";
+      transition: background 1.2s ease; /* fon silliq o‘zgarishi */
+    }
+    .container{flex:1;max-width:980px;margin-inline:auto;padding:24px;width:100%}
+    header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:18px}
+    h1{font-size:clamp(20px,3.6vw,34px);margin:0;font-weight:800;letter-spacing:.3px}
+    .badge{font-size:12px;color:var(--muted)}
+    .card{background:var(--card);border-radius:20px;box-shadow:var(--shadow);padding:18px}
+    .grid{display:grid;gap:16px}
+    @media(min-width:860px){.grid{grid-template-columns:1.1fr .9fr}}
+
+    .score{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;align-items:center;text-align:center}
+    .score .box{background:linear-gradient(180deg,rgba(255,255,255,.04),rgba(0,0,0,.04));border:1px solid rgba(255,255,255,.06);border-radius:16px;padding:12px}
+    .score b{display:block;font-size:32px}
+    .score small{color:var(--muted)}
+
+    .arena{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+    .panel{border:1px solid rgba(255,255,255,.06);border-radius:18px;padding:16px;min-height:220px;display:flex;flex-direction:column;gap:12px}
+    .panel h3{margin:0 0 6px;font-size:18px}
+    .choices{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:auto}
+    button.choice{appearance:none;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.02);color:inherit;border-radius:16px;padding:10px;cursor:pointer;transition:.18s transform ease,.18s box-shadow ease}
+    button.choice:disabled{opacity:.55;cursor:not-allowed}
+    button.choice:hover{transform:translateY(-2px);box-shadow:0 8px 18px rgba(0,0,0,.25)}
+    figure{margin:0;display:flex;flex-direction:column;align-items:center;gap:8px}
+    .icon{height:72px;aspect-ratio:1/1;object-fit:contain;filter:drop-shadow(0 4px 12px rgba(0,0,0,.18))}
+    figcaption{font-weight:600}
+
+    .cpu-stage{display:grid;place-items:center;min-height:150px;border:1px dashed rgba(255,255,255,.12);border-radius:14px;background:rgba(255,255,255,.02)}
+    .cpu-stage img{height:110px;aspect-ratio:1/1;object-fit:contain}
+
+    .result{margin-top:14px;font-weight:700}
+    .result.win{color:var(--win)}
+    .result.lose{color:var(--lose)}
+    .result.draw{color:var(--draw)}
+
+    .controls{display:flex;gap:10px;flex-wrap:wrap}
+    .controls select,.controls button{appearance:none;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.04);color:inherit;border-radius:12px;padding:10px 12px;font-weight:600}
+    .controls button{cursor:pointer}
+    .controls button:disabled{opacity:.6;cursor:not-allowed}
+    .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+    footer{margin-top:auto;color:var(--muted);text-align:center;font-size:13px;padding:16px}
+    a{color:var(--accent);text-decoration:none}
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div>
+        <h1>TOSh • QOG'OZ • QAYCHI</h1>
+        <div class="badge">Bir fayl — och va o'yna ⚡</div>
+      </div>
+      <div class="controls">
+        <label>
+          <span class="sr-only">G'alabalar soni</span>
+          <select id="targetWins">
+            <option value="3">Kim birinchi 3 ta yutsa</option>
+            <option value="5" selected>Kim birinchi 5 ta yutsa</option>
+            <option value="10">Kim birinchi 10 ta yutsa</option>
+          </select>
+        </label>
+        <button id="resetBtn" title="Hammasini qayta boshlash">♻️ Reset</button>
+      </div>
+    </header>
+
+    <div class="grid">
+      <section class="card">
+        <div class="score">
+          <div class="box" aria-live="polite" aria-atomic="true">
+            <small>O'yinchi</small>
+            <b id="pScore">0</b>
+          </div>
+          <div class="box">
+            <small>Natija</small>
+            <b id="roundLabel">—</b>
+          </div>
+          <div class="box" aria-live="polite" aria-atomic="true">
+            <small>Kompyuter</small>
+            <b id="cScore">0</b>
+          </div>
+        </div>
+        <div id="matchBanner" class="result" role="status" aria-live="polite"></div>
+      </section>
+
+      <section class="card arena">
+        <div class="panel" aria-labelledby="youTitle">
+          <h3 id="youTitle">Sizning tanlovingiz</h3>
+          <div class="choices">
+            <button class="choice" data-move="rock" aria-label="Tosh">
+              <figure>
+                <img class="icon" src="./pics/tosh.jpg" alt="Tosh" onerror="this.replaceWith(fallback('🪨'))" />
+                <figcaption>Tosh</figcaption>
+              </figure>
+            </button>
+            <button class="choice" data-move="paper" aria-label="Qog'oz">
+              <figure>
+                <img class="icon" src="./pics/qogoz.jpg" alt="Qog'oz" onerror="this.replaceWith(fallback('📄'))" />
+                <figcaption>Qog'oz</figcaption>
+              </figure>
+            </button>
+            <button class="choice" data-move="scissors" aria-label="Qaychi">
+              <figure>
+                <img class="icon" src="./pics/qaychi.jpg" alt="Qaychi" onerror="this.replaceWith(fallback('✂️'))" />
+                <figcaption>Qaychi</figcaption>
+              </figure>
+            </button>
+          </div>
+        </div>
+        <div class="panel" aria-labelledby="cpuTitle">
+          <h3 id="cpuTitle">Kompyuter</h3>
+          <div class="cpu-stage" id="cpuStage" aria-live="polite" aria-atomic="true">
+            <span style="opacity:.6">Tanlov kutilmoqda…</span>
+          </div>
+          <div id="roundResult" class="result" role="status" aria-live="polite"></div>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <footer>
+    Owner: Murodbek Tuychiyev
+  </footer>
+
+  <script>
+    /* --- Orqa fon ranglari (faqat tun temalari) --- */
+    const nightThemes = [
+      "radial-gradient(circle at top left, #0b0f14, #1a1f2b)", 
+      "radial-gradient(circle at bottom right, #141824, #0f0c1a)", 
+      "radial-gradient(circle at center, #0d1117, #1c1f29)", 
+      "radial-gradient(circle at 80% 20%, #101520, #05070a)", 
+      "radial-gradient(circle at 30% 70%, #0e141f, #191d27)"
+    ];
+    let bgIndex = 0;
+    setInterval(() => {
+      document.body.style.background = nightThemes[bgIndex];
+      bgIndex = (bgIndex + 1) % nightThemes.length;
+    }, 5500);
+
+    /* --- O'yin logikasi --- */
+    const IMAGES = {
+      rock: './pics/tosh.jpg',
+      paper: './pics/qogoz.jpg',
+      scissors: './pics/qaychi.jpg',
+      loading: './pics/loading.png'
+    };
+    const MOVES = ['rock','paper','scissors'];
+    const LABELS = { rock:"Tosh", paper:"Qog'oz", scissors:"Qaychi" };
+    const state = { p:0,c:0,target:+document.getElementById('targetWins').value,matchOver:false };
+    const pScore=document.getElementById('pScore'),
+          cScore=document.getElementById('cScore'),
+          roundLabel=document.getElementById('roundLabel'),
+          cpuStage=document.getElementById('cpuStage'),
+          roundResult=document.getElementById('roundResult'),
+          matchBanner=document.getElementById('matchBanner'),
+          resetBtn=document.getElementById('resetBtn'),
+          targetWins=document.getElementById('targetWins'),
+          choiceButtons=Array.from(document.querySelectorAll('button.choice'));
+    function fallback(emoji){const span=document.createElement('span');span.textContent=emoji;span.style.fontSize='60px';span.style.display='inline-block';return span;}
+    function sleep(ms){return new Promise(r=>setTimeout(r,ms));}
+    function cpuPick(){return MOVES[Math.floor(Math.random()*MOVES.length)];}
+    function decide(player,cpu){if(player===cpu)return 'draw';return (player==='rock'&&cpu==='scissors'||player==='paper'&&cpu==='rock'||player==='scissors'&&cpu==='paper')?'win':'lose';}
+    function setBusy(b){choiceButtons.forEach(el=>el.disabled=b||state.matchOver);resetBtn.disabled=b;targetWins.disabled=b;}
+    function renderScores(){pScore.textContent=state.p;cScore.textContent=state.c;}
+    function renderMatchBanner(){if(!state.matchOver){matchBanner.textContent='';return;}const youWon=state.p>state.c;matchBanner.textContent=youWon?`✅ Tabriklayman! Siz ${state.target} g'alabaga yetdingiz.`:`❌ Afsus, kompyuter ${state.target} g'alabaga yetdi.`;matchBanner.className='result '+(youWon?'win':'lose');}
+    async function playRound(playerMove){if(state.matchOver)return;setBusy(true);roundResult.textContent='';roundResult.className='result';roundLabel.textContent='…';cpuStage.innerHTML='';const loading=document.createElement('img');loading.src=IMAGES.loading;loading.alt='Yuklanmoqda';loading.onerror=()=>loading.replaceWith(fallback('⏳'));cpuStage.appendChild(loading);await sleep(700+Math.random()*400);const cpu=cpuPick();const img=document.createElement('img');img.src=IMAGES[cpu];img.alt=LABELS[cpu];img.onerror=()=>img.replaceWith(fallback(cpu==='rock'?'🪨':cpu==='paper'?'📄':'✂️'));cpuStage.innerHTML='';cpuStage.appendChild(img);const outcome=decide(playerMove,cpu);if(outcome==='win')state.p++;else if(outcome==='lose')state.c++;renderScores();roundLabel.textContent=outcome==='draw'?'Durang':(outcome==='win'?'Siz':'Kompyuter');roundResult.textContent=outcome==='draw'?`Durang: ${LABELS[playerMove]} = ${LABELS[cpu]}`:(outcome==='win'?`Yutdingiz: ${LABELS[playerMove]} > ${LABELS[cpu]}`:`Yutqazdingiz: ${LABELS[cpu]} > ${LABELS[playerMove]}`);roundResult.className='result '+(outcome==='draw'?'draw':outcome);if(state.p>=state.target||state.c>=state.target){state.matchOver=true;setBusy(false);choiceButtons.forEach(el=>el.disabled=true);renderMatchBanner();}else{setBusy(false);renderMatchBanner();}}
+    function resetAll(){state.p=0;state.c=0;state.matchOver=false;renderScores();roundLabel.textContent='—';roundResult.textContent='';roundResult.className='result';matchBanner.textContent='';matchBanner.className='result';cpuStage.innerHTML='<span style="opacity:.6">Tanlov kutilmoqda…</span>';setBusy(false);}
+    choiceButtons.forEach(btn=>btn.addEventListener('click',()=>{const move=btn.getAttribute('data-move');playRound(move);}));resetBtn.addEventListener('click',resetAll);targetWins.addEventListener('change',()=>{state.target=+targetWins.value;resetAll();});['rock','paper','scissors','loading'].forEach(k=>{const i=new Image();i.src=IMAGES[k];});window.addEventListener('keydown',ev=>{if(state.matchOver)return;const key=ev.key.toLowerCase();if(key==='r')playRound('rock');if(key==='p')playRound('paper');if(key==='s')playRound('scissors');});
+  </script>
+</body>
+</html>
